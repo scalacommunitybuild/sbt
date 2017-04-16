@@ -1,5 +1,6 @@
 import sbt._
 import Keys._
+import sbt.util.Eval
 
 object Dependencies {
   val scala282 = "2.8.2"
@@ -59,7 +60,7 @@ object Dependencies {
 
   def addSbtModule(p: Project, path: Option[String], projectName: String, m: ModuleID, c: Option[Configuration] = None) =
     path match {
-      case Some(f) => p dependsOn c.fold[ClasspathDependency](ProjectRef(file(f), projectName))(ProjectRef(file(f), projectName) % _)
+      case Some(f) => p dependsOn c.fold[Eval[ClasspathDep[ProjectReference]]](ProjectRef(file(f), projectName))(ProjectRef(file(f), projectName) % _)
       case None    => p settings (libraryDependencies += c.fold(m)(m % _))
     }
 

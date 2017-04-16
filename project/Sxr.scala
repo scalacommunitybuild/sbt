@@ -1,6 +1,12 @@
 import sbt._
 import Keys._
 import Scope.ThisScope
+import sbt.librarymanagement.syntax._
+import sjsonnew.IsoString
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
+import sbt.internal.util.DirectoryStoreFactory
+import scala.json.ast.unsafe.JValue
+import sbt.internal.inc.RawCompiler
 
 object Sxr {
   val sxrConf = config("sxr").hide
@@ -24,11 +30,15 @@ object Sxr {
   def sxrTask = Def task {
     val out = target.value
     val outputDir = out.getParentFile / (out.getName + ".sxr")
-    val f = FileFunction.cached(streams.value.cacheDirectory / "sxr", FilesInfo.hash) { in =>
+
+    implicit val jvalueIsoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
+    import sbt.internal.util.CacheImplicits._
+    val store = new DirectoryStoreFactory[JValue](streams.value.cacheDirectory / "sxr", Converter)
+    val f = FileFunction.cached(store, FileInfo.hash) { in =>
       streams.value.log.info("Generating sxr output in " + outputDir.getAbsolutePath + "...")
       IO.delete(out)
       IO.createDirectory(out)
-      val comp = new compiler.RawCompiler(scalaInstance.value, classpathOptions.value, streams.value.log)
+      val comp = new RawCompiler(scalaInstance.value, classpathOptions.value, streams.value.log)
       comp(in.toSeq.sorted, fullClasspath.value.files, out, scalacOptions.value)
       Set(outputDir)
     }

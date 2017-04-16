@@ -3,6 +3,8 @@ import Keys._
 import Def.Initialize
 
 import scala.language.reflectiveCalls
+import sbt.internal.inc.ScalaInstance
+import sbt.internal.inc.classpath
 
 object ScriptedPlugin extends sbt.AutoPlugin {
   override def requires = plugins.JvmPlugin

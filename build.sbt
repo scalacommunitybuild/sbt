@@ -12,13 +12,13 @@ def buildLevelSettings: Seq[Setting[_]] = inThisBuild(Seq(
   organization := "org.scala-sbt",
   version := "1.0.0-M4-LOCAL-20170415B",
   description := "sbt is an interactive build tool",
-  bintrayOrganization := Some("sbt"),
-  bintrayRepository := {
-    if (publishStatus.value == "releases") "maven-releases"
-    else "maven-snapshots"
-  },
-  bintrayPackage := "sbt",
-  bintrayReleaseOnPublish := false,
+  // bintrayOrganization := Some("sbt"),
+  // bintrayRepository := {
+  //   if (publishStatus.value == "releases") "maven-releases"
+  //   else "maven-snapshots"
+  // },
+  // bintrayPackage := "sbt",
+  // bintrayReleaseOnPublish := false,
   licenses := List("BSD New" -> url("https://github.com/sbt/sbt/blob/0.13/LICENSE")),
   developers := List(
     Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
@@ -42,10 +42,10 @@ def commonSettings: Seq[Setting[_]] = Seq[SettingsDefinition](
   concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   javacOptions in compile ++= Seq("-target", "6", "-source", "6", "-Xlint", "-Xlint:-serial"),
-  incOptions := incOptions.value.withNameHashing(true),
+  // incOptions := incOptions.value.withNameHashing(true),
   crossScalaVersions := Seq(baseScalaVersion),
-  bintrayPackage := (bintrayPackage in ThisBuild).value,
-  bintrayRepository := (bintrayRepository in ThisBuild).value,
+  // bintrayPackage := (bintrayPackage in ThisBuild).value,
+  // bintrayRepository := (bintrayRepository in ThisBuild).value,
   mimaDefaultSettings,
   publishArtifact in Test := false,
   mimaPreviousArtifacts := Set.empty, // Set(organization.value % moduleName.value % "1.0.0"),
@@ -55,10 +55,10 @@ def commonSettings: Seq[Setting[_]] = Seq[SettingsDefinition](
 
 def minimalSettings: Seq[Setting[_]] =
   commonSettings ++ customCommands ++
-  publishPomSettings ++ Release.javaVersionCheckSettings
+  publishPomSettings // ++ Release.javaVersionCheckSettings
 
 def baseSettings: Seq[Setting[_]] =
-  minimalSettings ++ Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings ++ Formatting.settings
+  minimalSettings ++ Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings // ++ Formatting.settings
 
 def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
@@ -66,7 +66,7 @@ def testedBaseSettings: Seq[Setting[_]] =
 lazy val sbtRoot: Project = (project in file(".")).
   enablePlugins(ScriptedPlugin).
   configs(Sxr.sxrConf).
-  aggregate(nonRoots: _*).
+  aggregateSeq(nonRoots).
   settings(
     buildLevelSettings,
     minimalSettings,
@@ -80,8 +80,8 @@ lazy val bundledLauncherProj =
   (project in file("launch")).
   settings(
     minimalSettings,
-    inConfig(Compile)(Transform.configSettings),
-    Release.launcherSettings(sbtLaunchJar)
+    inConfig(Compile)(Transform.configSettings)
+    // Release.launcherSettings(sbtLaunchJar)
   ).
   enablePlugins(SbtLauncherPlugin).
   settings(
@@ -90,8 +90,8 @@ lazy val bundledLauncherProj =
     description := "sbt application launcher",
     autoScalaLibrary := false,
     crossPaths := false,
-    publish := Release.deployLauncher.value,
-    publishLauncher := Release.deployLauncher.value,
+    publish := ???, /// Release.deployLauncher.value,
+    publishLauncher := ???, // Release.deployLauncher.value,
     packageBin in Compile := sbtLaunchJar.value
   )
 
@@ -215,7 +215,7 @@ lazy val mainSettingsProj = (project in file("main-settings")).
 // The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in file("main")).
   dependsOn(actionsProj, mainSettingsProj, runProj, commandProj).
-  disablePlugins(SbtScalariform).
+  // disablePlugins(SbtScalariform).
   settings(
     testedBaseSettings,
     name := "Main",
@@ -267,11 +267,11 @@ def allProjects = Seq(
   scriptedSbtProj, scriptedPluginProj, protocolProj,
   actionsProj, commandProj, mainSettingsProj, mainProj, sbtProj, bundledLauncherProj)
 
-def projectsWithMyProvided = allProjects.map(p => p.copy(configurations = (p.configurations.filter(_ != Provided)) :+ myProvided))
+def projectsWithMyProvided = allProjects.map(p => p.overrideConfigs(p.configurations.filter(_ != Provided) :+ myProvided: _*))
 lazy val nonRoots = projectsWithMyProvided.map(p => LocalProject(p.id))
 
 def rootSettings = fullDocSettings ++
-  Util.publishPomSettings ++ otherRootSettings ++ Formatting.sbtFilesSettings ++
+  Util.publishPomSettings ++ otherRootSettings // ++ Formatting.sbtFilesSettings ++
   Transform.conscriptSettings(bundledLauncherProj)
 def otherRootSettings = Seq(
   scripted := scriptedTask.evaluated,
@@ -280,8 +280,8 @@ def otherRootSettings = Seq(
   // scriptedPrescripted := { addSbtAlternateResolver _ },
   scriptedLaunchOpts := List("-XX:MaxPermSize=256M", "-Xmx1G"),
   publishAll := { val _ = (publishLocal).all(ScopeFilter(inAnyProject)).value },
-  publishLocalBinAll := { val _ = (publishLocalBin).all(ScopeFilter(inAnyProject)).value },
-  aggregate in bintrayRelease := false
+  publishLocalBinAll := { val _ = (publishLocalBin).all(ScopeFilter(inAnyProject)).value }
+  // aggregate in bintrayRelease := false
 ) ++ inConfig(Scripted.RepoOverrideTest)(Seq(
   scriptedPrescripted := { _ => () },
   scriptedLaunchOpts := {
@@ -314,7 +314,7 @@ lazy val docProjects: ScopeFilter = ScopeFilter(
   inAnyProject -- inProjects(sbtRoot, sbtProj, scriptedSbtProj, scriptedPluginProj),
   inConfigurations(Compile)
 )
-def fullDocSettings = Util.baseScalacOptions ++ Docs.settings ++ Sxr.settings ++ Seq(
+def fullDocSettings = Util.baseScalacOptions ++ /* Docs.settings ++*/ Sxr.settings ++ Seq(
   scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
   sources in sxr := {
     val allSources = (sources ?? Nil).all(docProjects).value

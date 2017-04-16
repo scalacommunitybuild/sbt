@@ -1,8 +1,15 @@
 import scala.util.control.NonFatal
 import sbt._
 import Keys._
+import sjsonnew.IsoString
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
+import sbt.internal.util.DirectoryStoreFactory
+import scala.json.ast.unsafe.JValue
+import sbt.internal.inc.Analysis
 
 object Util {
+  implicit val jvalueIsoString: IsoString[JValue] = IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
+
   val ExclusiveTest: Tags.Tag = Tags.Tag("exclusive-test")
 
   val componentID: SettingKey[Option[String]] = settingKey[Option[String]]("")
@@ -60,7 +67,10 @@ object Util {
   def generateAPICached(defs: Seq[File], cp: Classpath, out: File, main: Option[String], run: ScalaRun, s: TaskStreams): Seq[File] =
     {
       def gen() = generateAPI(defs, cp, out, main, run, s)
-      val f = FileFunction.cached(s.cacheDirectory / "gen-api", FilesInfo.hash) { _ => gen().toSet } // TODO: check if output directory changed
+
+      import sbt.internal.util.CacheImplicits._
+      val store = new DirectoryStoreFactory[JValue](s.cacheDirectory / "gen-api", Converter)
+      val f = FileFunction.cached(store, FileInfo.hash) { _ => gen().toSet } // TODO: check if output directory changed
       f(defs.toSet).toSeq
     }
   def generateAPI(defs: Seq[File], cp: Classpath, out: File, main: Option[String], run: ScalaRun, s: TaskStreams): Seq[File] =
@@ -69,15 +79,15 @@ object Util {
       IO.createDirectory(out)
       val args = "xsbti.api" :: out.getAbsolutePath :: defs.map(_.getAbsolutePath).toList
       val mainClass = main getOrElse "No main class defined for datatype generator"
-      toError(run.run(mainClass, cp.files, args, s.log))
+      run.run(mainClass, cp.files, args, s.log).get
       (out ** "*.java").get
     }
-  def lastCompilationTime(analysis: sbt.inc.Analysis): Long =
+  def lastCompilationTime(analysis: Analysis): Long =
     {
       val lastCompilation = analysis.compilations.allCompilations.lastOption
       lastCompilation.map(_.startTime) getOrElse 0L
     }
-  def generateVersionFile(version: String, dir: File, s: TaskStreams, analysis: sbt.inc.Analysis): Seq[File] =
+  def generateVersionFile(version: String, dir: File, s: TaskStreams, analysis: Analysis): Seq[File] =
     {
       import java.util.{ Date, TimeZone }
       val formatter = new java.text.SimpleDateFormat("yyyyMMdd'T'HHmmss")
