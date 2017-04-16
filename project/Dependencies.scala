@@ -14,7 +14,7 @@ object Dependencies {
   private val ioVersion = "1.0.0-M11"
   private val utilVersion = "1.0.0-M22"
   private val lmVersion = "1.0.0-X9"
-  private val zincVersion = "1.0.0-X12"
+  private val zincVersion = "1.0.0-X12-LOCAL-20170415B"
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
